@@ -10,24 +10,23 @@ from vanna.ollama import Ollama
 from vanna.types import TrainingPlan, TrainingPlanItem
 
 from my_chromadb_vector import My_ChromaDB_VectorStore
-
-
+# Placeholder for additional imports or code
 class MyVanna(My_ChromaDB_VectorStore, Ollama):
     def __init__(self, config=None):
         My_ChromaDB_VectorStore.__init__(self, config=config)
         Ollama.__init__(self, config=config)
 
-    # 生成后续关联问题
+    # Generate follow-up questions
     def generate_followup_questions(
             self, question: str, sql: str, df: pd.DataFrame, n_questions: int = 5, **kwargs
     ) -> list:
 
         message_log = [
             self.system_message(
-                f"你是一个乐于助人的数据助手。回答使用中文，用户提出了问题：“{question}”\n\n此问题的 SQL 查询为：{sql}\n\n以下是包含查询结果的 pandas DataFrame: \n{df.to_markdown()}\n\n"
+                f"You are a helpful data assistant. Respond in Chinese, the user asked the question: '{question}'\n\nThe SQL query for this question is: {sql}\n\nHere is the pandas DataFrame containing the query results: \n{df.to_markdown()}\n\n"
             ),
             self.user_message(
-                f"回答使用中文，生成用户可能就此数据询问的 {n_questions} 个后续问题列表。用问题列表回复，每行一个。不要用任何解释来回答——只回答问题。请记住，应该有一个可以从问题生成的明确 SQL 查询。最好是可以在此对话上下文之外回答的问题。最好是稍微修改生成的 SQL 查询以允许更深入地挖掘数据的问题。每个问题都将变成一个按钮，用户可以单击该按钮来生成新的 SQL 查询，因此不要使用“示例”类型的问题。每个问题都必须与实例化的 SQL 查询一一对应." +
+                f"Respond in Chinese, generate a list of {n_questions} follow-up questions the user might ask based on this data. Reply with a list of questions, one per line. Do not provide any explanations—just the questions. Remember, each question should correspond to a clear SQL query that can be generated from it. Prefer questions that allow for deeper data exploration by slightly modifying the generated SQL query. Each question will become a button that the user can click to generate a new SQL query, so avoid 'example' type questions. Each question must correspond one-to-one with the instantiated SQL query." +
                 self._response_language()
             ),
         ]
@@ -37,14 +36,14 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
         numbers_removed = re.sub(r"^\d+\.\s*", "", llm_response, flags=re.MULTILINE)
         return numbers_removed.split("\n")
 
-    # 生成摘要
+    # Generate summary
     def generate_summary(self, question: str, df: pd.DataFrame, **kwargs) -> str:
         message_log = [
             self.system_message(
-                f"你是一个乐于助人的数据助手。回答使用中文，用户提出了问题：“{question}”\in\以下是包含查询结果的 pandas DataFrame：\in{df.to_markdown()}\n\n"
+                f"You are a helpful data assistant. Respond in Chinese, the user asked the question: '{question}'\n\nHere is the pandas DataFrame containing the query results: \n{df.to_markdown()}\n\n"
             ),
             self.user_message(
-                "。回答使用中文，根据所问问题简要总结数据。除了总结之外，不要提供任何其他解释。" +
+                "Respond in Chinese, briefly summarize the data based on the question asked. Do not provide any other explanations besides the summary." +
                 self._response_language()
             ),
         ]
@@ -52,7 +51,7 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
         summary = self.submit_prompt(message_log, **kwargs)
         return summary
 
-    # 获取SQL提示词
+    # Get SQL prompt
     def get_sql_prompt(
             self,
             initial_prompt: str,
@@ -64,8 +63,8 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
     ):
 
         if initial_prompt is None:
-            initial_prompt = f"你是一个 {self.dialect} 专家,用中文回答. " + \
-                             "请帮助生成 SQL 查询来回答问题。您的回复应仅基于给定的上下文，并遵循回复指南和格式说明. "
+            initial_prompt = f"You are an expert in {self.dialect}, respond in English. " + \
+                             "Please help generate an SQL query to answer the question. Your response should be based solely on the given context and follow the response guidelines and format instructions. "
 
         initial_prompt = self.add_ddl_to_prompt(
             initial_prompt, ddl_list, max_tokens=self.max_tokens
@@ -79,13 +78,13 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
         )
 
         initial_prompt += (
-            " == =回复指南 \n "
-            "1. 如果提供的上下文足够，请生成有效的 SQL 查询，但不对问题进行任何解释。\n "
-            "2. 如果提供的上下文几乎足够，但需要了解特定列中的特定字符串，请生成中间 SQL 查询以查找该列中的不同字符串。在查询前面添加注释，说明 middle_sql \n "
-            "3. 如果提供的上下文不足，请解释无法生成的原因。\n "
-            "4. 请使用最相关的表。\n "
-            "5. 如果之前已经问过并回答过该问题，请准确重复之前的答案。\n "
-            f"6. 确保输出 SQL 符合 {self.dialect} 且可执行，并且没有语法错误。\n "
+            " === Response Guidelines === \n "
+            "1. If the provided context is sufficient, generate a valid SQL query without explaining the question.\n "
+            "2. If the provided context is almost sufficient but requires knowing specific strings in specific columns, generate an intermediate SQL query to find the distinct strings in that column. Add a comment before the query indicating middle_sql.\n "
+            "3. If the provided context is insufficient, explain why it is not possible to generate the query.\n "
+            "4. Use the most relevant tables.\n "
+            "5. If the question has been asked and answered before, repeat the previous answer exactly.\n "
+            f"6. Ensure the output SQL conforms to {self.dialect}, is executable, and has no syntax errors.\n "
         )
 
         message_log = [self.system_message(initial_prompt)]
@@ -101,7 +100,7 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
         message_log.append(self.user_message(question))
         return message_log
 
-    # 获取 后续问题提示词
+    # Get follow-up questions prompt
     def get_followup_questions_prompt(
             self,
             question: str,
@@ -110,7 +109,7 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
             doc_list: list,
             **kwargs,
     ) -> list:
-        initial_prompt = f"用中文回复，用户最初提出的问题: '{question}': \n\n"
+        initial_prompt = f"Respond in Spanish, the user's initial question: '{question}': \n\n"
 
         initial_prompt = self.add_ddl_to_prompt(
             initial_prompt, ddl_list, max_tokens=self.max_tokens
@@ -127,44 +126,45 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
         message_log = [self.system_message(initial_prompt)]
         message_log.append(
             self.user_message(
-                "用中文回答，生成用户可能就此数据提出的后续问题列表。用问题列表进行回复，每行一个。不要回答任何解释——只回答问题."
+            "Respond in English, generate a list of follow-up questions the user might ask based on this data. Reply with a list of questions, one per line. Do not provide any explanations—just the questions."
             )
         )
 
         return message_log
 
-    # 生成问题
+    # Generate question
     def generate_question(self, sql: str, **kwargs) -> str:
         response = self.submit_prompt(
             [
-                self.system_message(
-                    "用中文回答，用户将向您提供 SQL，您将尝试猜测此查询回答的业务问题是什么。只返回问题，不做任何额外解释。不要在问题中引用表名."
-                ),
-                self.user_message(sql),
+            self.system_message(
+                "Respond in English, the user will provide you with an SQL query, and you will try to guess what business question this query answers. Return only the question without any additional explanation. Do not reference table names in the question."
+            ),
+            self.user_message(sql),
             ],
             **kwargs,
         )
 
         return response
 
-    # 生成绘图代码
+    # Generate plotly code
     def generate_plotly_code(
             self, question: str = None, sql: str = None, df_metadata: str = None, **kwargs
     ) -> str:
         if question is not None:
-            system_msg = f"以下是一个 pandas DataFrame，其中包含回答用户提出的问题的查询结果: '{question}'"
+            system_msg = f"Here is a pandas DataFrame containing the results of the query answering the user's question: '{question}'"
         else:
-            system_msg = "以下是 pandas DataFrame "
+            system_msg = "Here is the pandas DataFrame "
 
         if sql is not None:
-            system_msg += f"\n\n DataFrame 是使用此查询生成的: {sql}\n\n"
-
-        system_msg += f"以下是有关生成的 pandas DataFrame 的信息 'df': \n{df_metadata}"
+            system_msg += f"\n\n The DataFrame was generated using this query: {sql}\n\n"
+            if df_metadata is None:
+                raise ValueError("DataFrame metadata is required to generate plotly code.")
+        system_msg += f"Here is the information about the generated pandas DataFrame 'df': \n{df_metadata}"
 
         message_log = [
             self.system_message(system_msg),
             self.user_message(
-                "你能生成 Python plotly 代码来绘制数据框的结果吗？假设数据位于名为 'df'. 如果数据框中只有一个值，请使用指标。仅使用 Python 代码进行回复。不要回答任何解释——只提供代码."
+                "Can you generate Python plotly code to plot the results of the DataFrame? Assume the data is in a variable named 'df'. If the DataFrame contains only one value, use an indicator. Reply with only the Python code. Do not provide any explanations—just the code."
             ),
         ]
 
@@ -172,7 +172,7 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
 
         return self._sanitize_plotly_code(self._extract_python_code(plotly_code))
 
-    # 训练
+    # Training
     def train(
             self,
             question: str = None,
@@ -182,7 +182,7 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
             plan: TrainingPlan = None,
     ) -> str:
         if documentation:
-            print("添加 文档....")
+            print("Adding documentation....")
             return self.add_documentation(documentation)
 
         if sql:
@@ -191,7 +191,7 @@ class MyVanna(My_ChromaDB_VectorStore, Ollama):
             return self.add_question_sql(question=question, sql=sql)
 
         if ddl:
-            print("添加 ddl:", ddl)
+            print("Adding ddl:", ddl)
             return self.add_ddl(question=question, ddl=ddl)
 
         if plan:

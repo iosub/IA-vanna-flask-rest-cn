@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "ia-vanna-flask-rest-cn"
+version = "0.1.0"
+description = ""
+authors = ["iosub <1330995+iosub@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+#vanna = {extras = ["mssql"], version = "^0.7.3"}
+vanna = {extras = ["chromadb", "ollama","mssql"], version = "^0.7.3"}
+kaleido = "0.2.1"
+
+#kaleido = "^0.2.1.post1"
+pyodbc = "^5.1.0"
+chromadb = "^0.5.13"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
